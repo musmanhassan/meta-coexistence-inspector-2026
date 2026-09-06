@@ -1,44 +1,83 @@
 <!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta name="robots" content="noindex,nofollow,noarchive">
-    <title>Temporary Test Page</title>
-  </head>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex,nofollow,noarchive">
+<title>Temporary Test Page</title>
+</head>
 <body>
-  <h1>Temporary Test Page</h1>
+<h1>Temporary Test Page</h1>
 <p>Disposable inspection page. Not affiliated with any production system.</p>
 <button id="launchBtn">Launch</button>
+<h3>Login callback (sensitive fields redacted)</h3>
 <pre id="status">Not started.</pre>
+<h3>Embedded Signup session events</h3>
+<pre id="events">No events received yet.</pre>
 
 <script>
-  window.fbAsyncInit = function() {
-      FB.init({
-            appId: '1062760603038335',
-            autoLogAppEvents: true,
-            xfbml: true,
-            version: 'v21.0'
-      });
-  };
+window.fbAsyncInit = function() {
+  FB.init({
+    appId: '1062760603038335',
+    autoLogAppEvents: true,
+    xfbml: true,
+    version: 'v21.0'
+  });
+};
 </script>
-  <script async defer crossorigin="anonymous" src="https://connect.facebook.net/en_US/sdk.js"></script>
-  <script>
-    function fbLoginCallback(response) {
-        document.getElementById('status').textContent = JSON.stringify(response, null, 2);
+<script async defer crossorigin="anonymous" src="https://connect.facebook.net/en_US/sdk.js"></script>
+<script>
+function redactResponse(response) {
+  if (!response) return response;
+  var clone = JSON.parse(JSON.stringify(response));
+  if (clone.authResponse && clone.authResponse.code) {
+    clone.authResponse.code = '[redacted - not displayed per safety policy]';
+  }
+  return clone;
+}
+
+function fbLoginCallback(response) {
+  document.getElementById('status').textContent = JSON.stringify(redactResponse(response), null, 2);
+}
+
+document.getElementById('launchBtn').addEventListener('click', function() {
+  FB.login(fbLoginCallback, {
+    config_id: '1539911301512811',
+    response_type: 'code',
+    override_default_response_type: true,
+    extras: {
+      setup: {},
+      featureType: 'whatsapp_business_app_onboarding',
+      sessionInfoVersion: '3'
     }
-    document.getElementById('launchBtn').addEventListener('click', function() {
-        FB.login(fbLoginCallback, {
-              config_id: '1539911301512811',
-              response_type: 'code',
-              override_default_response_type: true,
-              extras: {
-                      setup: {},
-                      featureType: 'whatsapp_business_app_onboarding',
-                      sessionInfoVersion: '3'
-              }
-        });
-    });
-  </script>
+  });
+});
+
+window.addEventListener('message', function(event) {
+  if (!event.origin.endsWith('facebook.com')) return;
+  var data;
+  try {
+    data = JSON.parse(event.data);
+  } catch (e) {
+    return;
+  }
+  if (data.type !== 'WA_EMBEDDED_SIGNUP') return;
+
+  var d = data.data || {};
+  var summary = {
+    type: data.type,
+    event: data.event,
+    version: data.version,
+    waba_id: d.waba_id || null,
+    phone_number_id: d.phone_number_id || null,
+    current_step: d.current_step || null,
+    error_code: d.error_code || null,
+    error_message: d.error_message || null,
+    is_whatsapp_business_app_onboarding: data.event === 'FINISH_WHATSAPP_BUSINESS_APP_ONBOARDING'
+  };
+
+  document.getElementById('events').textContent = JSON.stringify(summary, null, 2);
+});
+</script>
 </body>
 </html>
